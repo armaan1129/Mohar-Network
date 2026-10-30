@@ -17,11 +17,13 @@ test("security headers are set", async ({ request }) => {
 });
 
 for (const path of ["/admin", "/admin/businesses", "/app"]) {
-  test(`${path} requires sign-in`, async ({ page }) => {
+  test(`${path} requires sign-in`, async ({ page, baseURL }) => {
     await page.goto(path);
-    await expect(page).toHaveURL(
-      new RegExp(`/login\\?next=${encodeURIComponent(path).replace(/%2F/g, "%2F")}`),
-    );
     await expect(page.getByRole("heading", { name: "Partner sign in" })).toBeVisible();
+    const url = new URL(page.url());
+    // Same host as requested: a redirect to another host (e.g. localhost) would drop the session cookie.
+    expect(url.host).toBe(new URL(baseURL!).host);
+    expect(url.pathname).toBe("/login");
+    expect(url.searchParams.get("next")).toBe(path);
   });
 }

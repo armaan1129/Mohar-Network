@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { safeNext } from "@/lib/auth";
+import { urlOnRequestHost } from "@/lib/request-url";
 import { createClient } from "@/lib/supabase/server";
 
 /** Lands magic-link and invite emails: PKCE `code`, or `token_hash` + `type` from a custom template. */
@@ -18,15 +19,10 @@ export async function GET(request: NextRequest) {
       ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
       : { error: new Error("missing code") };
 
-  const target = request.nextUrl.clone();
-  target.search = "";
-  if (error) {
-    target.pathname = "/login";
-    target.searchParams.set("error", "link");
-  } else {
-    const [path, query] = next.split("?");
-    target.pathname = path ?? "/app";
-    if (query) target.search = `?${query}`;
-  }
+  const target = urlOnRequestHost(
+    request.headers,
+    request.nextUrl,
+    error ? "/login?error=link" : next,
+  );
   return NextResponse.redirect(target);
 }

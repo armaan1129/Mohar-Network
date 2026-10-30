@@ -66,7 +66,7 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_URL=$(jq -r '.API_URL' <<<"$status")"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(jq -r '.ANON_KEY // .PUBLISHABLE_KEY' <<<"$status")"
             echo "SUPABASE_SERVICE_ROLE_KEY=$(jq -r '.SERVICE_ROLE_KEY // .SECRET_KEY' <<<"$status")"
-            echo "APP_BASE_URL=http://127.0.0.1:3000"
+            echo "APP_BASE_URL=http://localhost:3000"
             echo "NOTE_URL_PREFIX=https://sirhindmohar.in/n/"
           } >> "$GITHUB_ENV"
 

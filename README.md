@@ -24,10 +24,11 @@ Requires Node 22, pnpm 10 and Docker.
 pnpm install
 pnpm db:start            # local Supabase: Postgres, Auth, API, Mailpit
 cp .env.example apps/web/.env.local   # fill keys from `pnpm exec supabase status`
-pnpm dev                 # http://127.0.0.1:3000
+pnpm dev                 # http://localhost:3000
 ```
 
-Use `127.0.0.1` rather than `localhost`, matching `site_url` in `supabase/config.toml`.
+Use `localhost` rather than `127.0.0.1`, matching `site_url` in `supabase/config.toml`; a
+sign-in that hops between the two loses its session cookie.
 Sign-in emails land in Mailpit at http://127.0.0.1:54324. Demo logins are listed in
 `supabase/seed.sql` (e.g. `admin@mohar.test`; the admin enrols TOTP on first visit to `/admin`).
 

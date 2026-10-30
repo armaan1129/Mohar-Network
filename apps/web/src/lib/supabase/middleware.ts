@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/database.types";
+import { urlOnRequestHost } from "@/lib/request-url";
 
 /** Refreshes the auth session cookie and gates /app and /admin on being signed in. */
 export async function updateSession(request: NextRequest) {
@@ -29,10 +30,9 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isProtected = path === "/app" || path.startsWith("/app/") || path === "/admin" || path.startsWith("/admin/");
   if (!user && isProtected) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = `?next=${encodeURIComponent(path)}`;
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(
+      urlOnRequestHost(request.headers, request.nextUrl, `/login?next=${encodeURIComponent(path)}`),
+    );
   }
 
   return response;

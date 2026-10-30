@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // E2E_BASE_URL points at a deployed preview; otherwise we start the built app locally.
-const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
+// Use localhost, not 127.0.0.1: Next.js builds request URLs on "localhost", and a redirect that
+// switches host drops the session cookie.
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
 export default defineConfig({
   testDir: "e2e",
@@ -17,7 +19,7 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "pnpm --filter @mohar/web start --hostname 127.0.0.1 --port 3000",
+        command: "pnpm --filter @mohar/web start --port 3000",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,
