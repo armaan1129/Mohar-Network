@@ -1,0 +1,45 @@
+{
+  "name": "@mohar/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "db:types": "supabase gen types typescript --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --schema public > src/lib/database.types.ts && prettier --write src/lib/database.types.ts"
+  },
+  "dependencies": {
+    "@mohar/core": "workspace:*",
+    "@radix-ui/react-label": "2.1.7",
+    "@radix-ui/react-slot": "1.2.3",
+    "@supabase/ssr": "0.7.0",
+    "@supabase/supabase-js": "2.76.1",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "next": "15.5.6",
+    "qrcode": "1.5.4",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "server-only": "0.0.1",
+    "tailwind-merge": "3.3.1",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@tailwindcss/postcss": "4.1.16",
+    "@types/node": "22.18.12",
+    "@types/qrcode": "1.5.5",
+    "@types/react": "19.1.17",
+    "@types/react-dom": "19.1.11",
+    "eslint": "9.39.1",
+    "eslint-config-next": "15.5.6",
+    "prettier": "3.6.2",
+    "tailwindcss": "4.1.16",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}
