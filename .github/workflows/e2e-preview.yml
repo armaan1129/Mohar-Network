@@ -1,0 +1,28 @@
+name: E2E on Vercel preview
+
+# Vercel's GitHub integration reports each preview deployment; run the public smoke tests
+# against it. The full signed-in flows run in CI against a local Supabase.
+on: deployment_status
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e e2e/public.spec.ts
+        env:
+          E2E_BASE_URL: ${{ github.event.deployment_status.environment_url }}

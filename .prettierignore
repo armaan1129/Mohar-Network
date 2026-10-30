@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+supabase/
+.next/
+coverage/
+playwright-report/
+test-results/
