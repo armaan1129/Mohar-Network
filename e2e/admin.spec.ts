@@ -5,7 +5,9 @@ import { signInByMagicLink } from "./helpers";
 // Needs the local Supabase stack with seed data (CI runs `supabase start`).
 test.skip(!process.env.E2E_SUPABASE, "set E2E_SUPABASE=1 with a local Supabase stack running");
 
-test.describe.configure({ mode: "serial" });
+// Serial and never retried: these tests change persistent state (TOTP enrolment, new rows),
+// so a retry would not start from the same place.
+test.describe.configure({ mode: "serial", retries: 0 });
 
 test("admin signs in with magic link + TOTP and manages businesses", async ({ page }) => {
   await signInByMagicLink(page, "admin@mohar.test", "/admin");
@@ -19,9 +21,9 @@ test("admin signs in with magic link + TOTP and manages businesses", async ({ pa
 
   // One business per category per city: Café is held by Demo Café in Sirhind, but open in Patiala.
   await page.goto("/admin/businesses/new");
-  await page.getByLabel("City").selectOption({ label: "Sirhind (SIR)" });
+  await page.getByLabel("City", { exact: true }).selectOption({ label: "Sirhind (SIR)" });
   await expect(page.getByRole("option", { name: "Café (taken)" })).toBeDisabled();
-  await page.getByLabel("City").selectOption({ label: "Patiala (PTA)" });
+  await page.getByLabel("City", { exact: true }).selectOption({ label: "Patiala (PTA)" });
   await expect(page.getByRole("option", { name: "Café", exact: true })).toBeEnabled();
 
   // A new category, then a business in it.
@@ -33,7 +35,7 @@ test("admin signs in with magic link + TOTP and manages businesses", async ({ pa
 
   await page.goto("/admin/businesses/new");
   await page.getByLabel("Business name").fill("E2E Shop");
-  await page.getByLabel("City").selectOption({ label: "Sirhind (SIR)" });
+  await page.getByLabel("City", { exact: true }).selectOption({ label: "Sirhind (SIR)" });
   await page.getByLabel("Category").selectOption({ label: category });
   await page.getByLabel("National: also other national partners' notes").check();
   await page.getByLabel("Address").fill("E2E Street, Sirhind");
@@ -41,7 +43,7 @@ test("admin signs in with magic link + TOTP and manages businesses", async ({ pa
   await page.getByRole("button", { name: "Create business" }).click();
   await expect(page.getByRole("heading", { name: "E2E Shop" })).toBeVisible();
   await expect(page.getByLabel("Phone")).toHaveValue("+919876543210");
-  await expect(page.getByLabel("City")).toBeDisabled();
+  await expect(page.getByLabel("City", { exact: true })).toBeDisabled();
   await expect(page.getByLabel("National: also other national partners' notes")).toBeChecked();
 
   // Suspend keeps the category; the directory hides suspended businesses.
