@@ -3,9 +3,12 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(6);
 
+insert into public.cities (id, code, name, slug, is_live) values
+  ('d1000000-0000-4000-8000-0000000000e1', 'TST', 'Settle City', 'tst-test', true);
+
 insert into public.categories (id, name) values ('d1000000-0000-4000-8000-000000000001', 'Settle Cat');
-insert into public.businesses (id, name, category_id, address)
-values ('d2000000-0000-4000-8000-000000000001', 'Settle Shop', 'd1000000-0000-4000-8000-000000000001', 'Settle address');
+insert into public.businesses (id, name, city_id, category_id, address)
+values ('d2000000-0000-4000-8000-000000000001', 'Settle Shop', 'd1000000-0000-4000-8000-0000000000e1', 'd1000000-0000-4000-8000-000000000001', 'Settle address');
 
 select throws_ok(
   $$ insert into public.settlement_periods (quarter_start, quarter_end) values ('2026-02-01', '2026-04-30') $$,

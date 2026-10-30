@@ -74,6 +74,7 @@ export type Database = {
         Row: {
           address: string;
           category_id: string;
+          city_id: string;
           created_at: string;
           gstin: string | null;
           hours: string | null;
@@ -86,6 +87,7 @@ export type Database = {
           logo_url: string | null;
           name: string;
           phone: string | null;
+          scope: Database["public"]["Enums"]["business_scope"];
           status: Database["public"]["Enums"]["business_status"];
           updated_at: string;
         };
@@ -93,6 +95,7 @@ export type Database = {
         Insert: {
           address: string;
           category_id: string;
+          city_id: string;
           created_at?: string;
           gstin?: string | null;
           hours?: string | null;
@@ -105,12 +108,14 @@ export type Database = {
           logo_url?: string | null;
           name: string;
           phone?: string | null;
+          scope?: Database["public"]["Enums"]["business_scope"];
           status?: Database["public"]["Enums"]["business_status"];
           updated_at?: string;
         };
         Update: {
           address?: string;
           category_id?: string;
+          city_id?: string;
           created_at?: string;
           gstin?: string | null;
           hours?: string | null;
@@ -123,6 +128,7 @@ export type Database = {
           logo_url?: string | null;
           name?: string;
           phone?: string | null;
+          scope?: Database["public"]["Enums"]["business_scope"];
           status?: Database["public"]["Enums"]["business_status"];
           updated_at?: string;
         };
@@ -132,6 +138,13 @@ export type Database = {
             columns: ["category_id"];
             isOneToOne: false;
             referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "businesses_city_id_fkey";
+            columns: ["city_id"];
+            isOneToOne: false;
+            referencedRelation: "cities";
             referencedColumns: ["id"];
           },
         ];
@@ -174,6 +187,40 @@ export type Database = {
           id?: string;
           name?: string;
           name_pa?: string | null;
+        };
+        Relationships: [];
+      };
+      cities: {
+        Row: {
+          code: string;
+          created_at: string;
+          id: string;
+          is_live: boolean;
+          name: string;
+          name_pa: string | null;
+          slug: string;
+          state: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          code: string;
+          created_at?: string;
+          id?: string;
+          is_live?: boolean;
+          name: string;
+          name_pa?: string | null;
+          slug: string;
+          state?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          id?: string;
+          is_live?: boolean;
+          name?: string;
+          name_pa?: string | null;
+          slug?: string;
+          state?: string;
         };
         Relationships: [];
       };
@@ -492,6 +539,7 @@ export type Database = {
       };
       note_batches: {
         Row: {
+          city_code: string;
           created_at: string;
           created_by: string | null;
           first_seq: number;
@@ -504,6 +552,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          city_code: string;
           created_at?: string;
           created_by?: string | null;
           first_seq: number;
@@ -515,6 +564,7 @@ export type Database = {
           stack_size: number;
         };
         Update: {
+          city_code?: string;
           created_at?: string;
           created_by?: string | null;
           first_seq?: number;
@@ -525,7 +575,15 @@ export type Database = {
           series?: string;
           stack_size?: number;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "note_batches_city_code_fkey";
+            columns: ["city_code"];
+            isOneToOne: false;
+            referencedRelation: "cities";
+            referencedColumns: ["code"];
+          },
+        ];
       };
       note_events: {
         Row: {
@@ -578,6 +636,7 @@ export type Database = {
           allocated_business_id: string | null;
           allocation_id: string | null;
           batch_id: string;
+          city_code: string;
           customer_id: string | null;
           expires_at: string | null;
           id: string;
@@ -599,6 +658,7 @@ export type Database = {
           allocated_business_id?: string | null;
           allocation_id?: string | null;
           batch_id: string;
+          city_code: string;
           customer_id?: string | null;
           expires_at?: string | null;
           id?: string;
@@ -619,6 +679,7 @@ export type Database = {
           allocated_business_id?: string | null;
           allocation_id?: string | null;
           batch_id?: string;
+          city_code?: string;
           customer_id?: string | null;
           expires_at?: string | null;
           id?: string;
@@ -651,11 +712,18 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "notes_batch_id_fkey";
-            columns: ["batch_id"];
+            foreignKeyName: "notes_batch_fk";
+            columns: ["batch_id", "city_code", "series"];
             isOneToOne: false;
             referencedRelation: "note_batches";
-            referencedColumns: ["id"];
+            referencedColumns: ["id", "city_code", "series"];
+          },
+          {
+            foreignKeyName: "notes_city_code_fkey";
+            columns: ["city_code"];
+            isOneToOne: false;
+            referencedRelation: "cities";
+            referencedColumns: ["code"];
           },
           {
             foreignKeyName: "notes_customer_id_fkey";
@@ -997,12 +1065,14 @@ export type Database = {
     };
     Functions: {
       directory: {
-        Args: Record<PropertyKey, never>;
+        Args: { p_city_code?: string };
         Returns: {
           address: string;
           category_id: string;
           category_name: string;
           category_name_pa: string;
+          city_code: string;
+          city_name: string;
           hours: string;
           id: string;
           lat: number;
@@ -1010,11 +1080,13 @@ export type Database = {
           logo_url: string;
           name: string;
           phone: string;
+          scope: Database["public"]["Enums"]["business_scope"];
         }[];
       };
     };
     Enums: {
       business_role: "owner" | "cashier";
+      business_scope: "city" | "national";
       business_status: "active" | "suspended" | "left";
       dispute_status: "open" | "upheld" | "rejected" | "withdrawn";
       note_status: "printed" | "allocated" | "issued" | "redeemed" | "expired" | "void";
@@ -1136,6 +1208,7 @@ export const Constants = {
   public: {
     Enums: {
       business_role: ["owner", "cashier"],
+      business_scope: ["city", "national"],
       business_status: ["active", "suspended", "left"],
       dispute_status: ["open", "upheld", "rejected", "withdrawn"],
       note_status: ["printed", "allocated", "issued", "redeemed", "expired", "void"],

@@ -44,12 +44,12 @@ select is(
   (select array_agg(c.relname::text order by c.relname) from pg_class c
    where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
      and has_table_privilege('anon', c.oid, 'SELECT')),
-  array['categories', 'network_settings'],
-  'anon can read only categories and network_settings'
+  array['categories', 'cities', 'network_settings'],
+  'anon can read only categories, cities and network_settings'
 );
 
 select ok(
-  has_function_privilege('anon', 'public.directory()', 'EXECUTE'),
+  has_function_privilege('anon', 'public.directory(text)', 'EXECUTE'),
   'anon can call the public directory'
 );
 

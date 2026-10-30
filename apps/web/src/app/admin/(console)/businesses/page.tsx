@@ -12,7 +12,10 @@ export default async function BusinessesPage() {
   const { supabase } = await requireAdmin();
   const { data: businesses } = await supabase
     .from("businesses")
-    .select("id, name, status, issuance_cap_per_quarter, joined_at, categories(name)")
+    .select(
+      "id, name, status, scope, issuance_cap_per_quarter, joined_at, categories(name), cities(name, code)",
+    )
+    .order("city_id")
     .order("status")
     .order("name");
 
@@ -30,6 +33,9 @@ export default async function BusinessesPage() {
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
                 Business
+              </th>
+              <th scope="col" className="px-4 py-3 font-medium">
+                City
               </th>
               <th scope="col" className="px-4 py-3 font-medium">
                 Category
@@ -56,7 +62,17 @@ export default async function BusinessesPage() {
                     {b.name}
                   </Link>
                 </td>
-                <td className="px-4 py-3">{b.categories?.name}</td>
+                <td className="px-4 py-3">
+                  {b.cities?.name} <span className="text-muted-foreground">({b.cities?.code})</span>
+                </td>
+                <td className="px-4 py-3">
+                  {b.categories?.name}
+                  {b.scope === "national" && (
+                    <Badge tone="success" className="ml-2">
+                      national
+                    </Badge>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <Badge tone={statusTone[b.status]}>{b.status}</Badge>
                 </td>
@@ -66,7 +82,7 @@ export default async function BusinessesPage() {
             ))}
             {!businesses?.length && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
                   No businesses yet.
                 </td>
               </tr>

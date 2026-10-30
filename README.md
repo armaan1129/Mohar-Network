@@ -1,8 +1,12 @@
-# Sirhind Mohar
+# The Mohar Network
 
-A ₹100 reward note that customers earn and spend across a closed network of partner
-businesses in Sirhind, Punjab. Each printed note has a unique serial and a QR code for
-`https://sirhindmohar.in/n/<serial>`. **That URL format is printed and permanent.**
+A ₹100 reward note that customers earn and spend across closed networks of partner
+businesses, city by city, starting in Sirhind, Punjab. Each printed note has a unique serial
+(`SIR-A000001`: city code, series, number) and a QR code for
+`https://themoharnetwork.com/n/<serial>`. **That URL format is printed and permanent.**
+
+Each city has its own public site at `<city>.themoharnetwork.com`; the partner app (`/app`)
+and admin (`/admin`) live on `themoharnetwork.com`.
 
 Design, agreed rules and decisions: [`docs/design.md`](docs/design.md).
 
@@ -67,8 +71,8 @@ It needs GitHub environments `staging` and `production`, each with secrets
 
 - Auth → Sign-ups: **disabled** (people are invited by the network admin).
 - Auth → MFA: TOTP enabled.
-- Auth → URL configuration: site URL `https://sirhindmohar.in`; redirect URLs
-  `https://sirhindmohar.in/**` and the Vercel preview domain.
+- Auth → URL configuration: site URL `https://themoharnetwork.com`; redirect URLs
+  `https://themoharnetwork.com/**` and the Vercel preview domain.
 
 ### Bootstrapping the network admin (once per project)
 

@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth";
 import { createBusiness } from "../../actions";
 import { BusinessForm } from "../business-form";
-import { categoryOptions } from "../categories";
+import { businessFormOptions } from "../form-options";
 
 export const metadata: Metadata = { title: "Add business", robots: { index: false } };
 
 export default async function NewBusinessPage() {
   const { supabase } = await requireAdmin();
-  const categories = await categoryOptions(supabase);
+  const options = await businessFormOptions(supabase);
 
   return (
     <Card>
@@ -17,11 +17,7 @@ export default async function NewBusinessPage() {
         <CardTitle>Add a business</CardTitle>
       </CardHeader>
       <CardContent>
-        <BusinessForm
-          action={createBusiness}
-          categories={categories}
-          submitLabel="Create business"
-        />
+        <BusinessForm action={createBusiness} options={options} submitLabel="Create business" />
       </CardContent>
     </Card>
   );

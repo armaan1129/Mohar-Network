@@ -3,6 +3,28 @@ import { z } from "zod";
 
 const optionalText = (max: number) => z.string().max(max).optional();
 
+export const citySchema = z.object({
+  code: z
+    .string()
+    .transform((v) => v.toUpperCase())
+    .pipe(z.string().regex(/^[A-Z]{3}$/, "Use exactly 3 letters, e.g. SIR")),
+  name: z.string().min(2, "Enter the city name").max(60),
+  name_pa: optionalText(60),
+  slug: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(
+      z
+        .string()
+        .regex(/^[a-z][a-z0-9-]{1,30}$/, "Lower-case letters, digits and hyphens, e.g. sirhind"),
+    ),
+  state: z.string().min(2).max(60).default("Punjab"),
+  is_live: z
+    .string()
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
+});
+
 export const categorySchema = z.object({
   name: z.string().min(2, "Enter at least 2 characters").max(60),
   name_pa: optionalText(60),
@@ -13,7 +35,9 @@ const coordinate = (min: number, max: number) => z.coerce.number().min(min).max(
 export const businessSchema = z
   .object({
     name: z.string().min(2, "Enter the business name").max(120),
+    city_id: z.uuid("Choose a city"),
     category_id: z.uuid("Choose a category"),
+    scope: z.enum(["city", "national"], "Choose city or national"),
     address: z.string().min(5, "Enter the full address").max(300),
     gstin: z
       .string()
@@ -44,11 +68,12 @@ export const businessSchema = z
 
 export type BusinessInput = z.infer<typeof businessSchema>;
 
-/** Columns to write. Optional fields left blank are stored as null. */
+/** Columns to write. Optional fields left blank are stored as null. City is set only on create. */
 export function businessRow(input: BusinessInput) {
   return {
     name: input.name,
     category_id: input.category_id,
+    scope: input.scope,
     address: input.address,
     gstin: input.gstin ?? null,
     lat: input.lat ?? null,

@@ -1,7 +1,8 @@
 -- Local / staging seed data. Never run against production.
 --
--- Milestone 1: categories, 3 demo businesses, and demo logins.
--- Milestones 2–3 extend this with batch A (A000001–A000504, 12 stacks of 42), 20 customers
+-- Milestone 1: two cities (Sirhind live, Patiala not yet), categories, 3 demo businesses in
+-- Sirhind (one of them national-scope), and demo logins.
+-- Milestones 2–3 extend this with batch SIR-A (SIR-A000001–SIR-A000504, 12 stacks of 42), 20 customers
 -- and a quarter of issue/redeem activity once the RPCs exist.
 --
 -- Demo logins (magic link via the local Mailpit inbox at http://127.0.0.1:54324):
@@ -11,6 +12,10 @@
 --   owner.salon@mohar.test    owner,   Demo Salon
 --   owner.attar@mohar.test    owner,   Demo Attar House
 
+insert into public.cities (id, code, name, name_pa, slug, is_live) values
+  ('0c000000-0000-4000-8000-000000000001', 'SIR', 'Sirhind', 'ਸਰਹਿੰਦ', 'sirhind', true),
+  ('0c000000-0000-4000-8000-000000000002', 'PTA', 'Patiala', 'ਪਟਿਆਲਾ', 'patiala', false);
+
 insert into public.categories (id, name, name_pa) values
   ('10000000-0000-4000-8000-000000000001', 'Café', 'ਕੈਫ਼ੇ'),
   ('10000000-0000-4000-8000-000000000002', 'Salon', 'ਸੈਲੂਨ'),
@@ -19,12 +24,12 @@ insert into public.categories (id, name, name_pa) values
   ('10000000-0000-4000-8000-000000000005', 'Clothing', 'ਕੱਪੜੇ'),
   ('10000000-0000-4000-8000-000000000006', 'Footwear', 'ਜੁੱਤੀਆਂ');
 
-insert into public.businesses (id, name, category_id, address, lat, lng, phone, hours, issuance_cap_per_quarter) values
-  ('20000000-0000-4000-8000-000000000001', 'Demo Café', '10000000-0000-4000-8000-000000000001',
+insert into public.businesses (id, name, city_id, scope, category_id, address, lat, lng, phone, hours, issuance_cap_per_quarter) values
+  ('20000000-0000-4000-8000-000000000001', 'Demo Café', '0c000000-0000-4000-8000-000000000001', 'city', '10000000-0000-4000-8000-000000000001',
    'Demo address — Main Bazaar, Sirhind, Punjab 140406', 30.643600, 76.384700, '+911762000001', '9 am – 10 pm, all days', 300),
-  ('20000000-0000-4000-8000-000000000002', 'Demo Salon', '10000000-0000-4000-8000-000000000002',
+  ('20000000-0000-4000-8000-000000000002', 'Demo Salon', '0c000000-0000-4000-8000-000000000001', 'city', '10000000-0000-4000-8000-000000000002',
    'Demo address — GT Road, Sirhind, Punjab 140406', 30.641900, 76.389200, '+911762000002', '10 am – 8 pm, closed Tuesday', 200),
-  ('20000000-0000-4000-8000-000000000003', 'Demo Attar House', '10000000-0000-4000-8000-000000000003',
+  ('20000000-0000-4000-8000-000000000003', 'Demo Attar House', '0c000000-0000-4000-8000-000000000001', 'national', '10000000-0000-4000-8000-000000000003',
    'Demo address — Rauza Sharif Road, Sirhind, Punjab 140406', 30.646200, 76.380900, '+911762000003', '11 am – 9 pm, all days', null);
 
 -- Demo auth users (local only). Passwordless: they sign in by magic link.

@@ -13,6 +13,7 @@ import {
   businessSchema,
   businessStatusSchema,
   categorySchema,
+  citySchema,
   staffInviteSchema,
 } from "@/lib/validation/admin";
 
@@ -20,6 +21,40 @@ import {
 // Writes use the admin's own session, so RLS applies and the audit log records who did it.
 
 const idSchema = z.uuid();
+
+// ----------------------------------------------------------------- cities
+
+export async function createCity(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const { supabase } = await requireAdmin();
+  const parsed = citySchema.safeParse(formToObject(form));
+  if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
+
+  const { error } = await supabase
+    .from("cities")
+    .insert({ ...parsed.data, name_pa: parsed.data.name_pa ?? null });
+  if (error) return { error: describeDbError(error) };
+  revalidatePath("/admin/cities");
+  return { ok: true, message: `Added ${parsed.data.name} (${parsed.data.code}).` };
+}
+
+/** Code is not editable here: it is printed on every note of that city. */
+export async function updateCity(
+  id: string,
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const { supabase } = await requireAdmin();
+  const parsed = citySchema.omit({ code: true }).safeParse(formToObject(form));
+  if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
+
+  const { error } = await supabase
+    .from("cities")
+    .update({ ...parsed.data, name_pa: parsed.data.name_pa ?? null })
+    .eq("id", idSchema.parse(id));
+  if (error) return { error: describeDbError(error) };
+  revalidatePath("/admin/cities");
+  return { ok: true, message: "Saved." };
+}
 
 // ----------------------------------------------------------------- categories
 
@@ -78,7 +113,7 @@ export async function createBusiness(_prev: ActionState, form: FormData): Promis
 
   const { data, error } = await supabase
     .from("businesses")
-    .insert(businessRow(parsed.data))
+    .insert({ ...businessRow(parsed.data), city_id: parsed.data.city_id })
     .select("id")
     .single();
   if (error) return { error: describeDbError(error) };

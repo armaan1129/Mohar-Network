@@ -1,14 +1,17 @@
 /**
- * Note serials: one series letter + 6 digits. Stored compact ("A000001"),
- * displayed spaced ("A 000 001"). The QR encodes NOTE_URL_PREFIX + compact serial,
- * e.g. https://sirhindmohar.in/n/A000001 — that format is printed and permanent.
+ * Note serials: 3-letter city code, hyphen, series letter, 6 digits. Stored compact
+ * ("SIR-A000001"), displayed spaced ("SIR-A 000 001"). The QR encodes
+ * NOTE_URL_PREFIX + compact serial, e.g. https://themoharnetwork.com/n/SIR-A000001.
+ * That format is printed and permanent.
  */
 
-export const SERIAL_RE = /^[A-Z][0-9]{6}$/;
+export const SERIAL_RE = /^[A-Z]{3}-[A-Z][0-9]{6}$/;
+export const CITY_CODE_RE = /^[A-Z]{3}$/;
 export const MAX_SEQ = 999_999;
-export const DEFAULT_NOTE_URL_PREFIX = "https://sirhindmohar.in/n/";
+export const DEFAULT_NOTE_URL_PREFIX = "https://themoharnetwork.com/n/";
 
 export interface SerialParts {
+  city: string;
   series: string;
   seq: number;
 }
@@ -17,23 +20,24 @@ export function isSerial(value: string): boolean {
   return SERIAL_RE.test(value);
 }
 
-export function toSerial(series: string, seq: number): string {
+export function toSerial(city: string, series: string, seq: number): string {
+  if (!CITY_CODE_RE.test(city)) throw new RangeError("city code must be 3 letters A–Z");
   if (!/^[A-Z]$/.test(series)) throw new RangeError("series must be a single letter A–Z");
   if (!Number.isInteger(seq) || seq < 1 || seq > MAX_SEQ) {
     throw new RangeError(`seq must be an integer 1–${MAX_SEQ}`);
   }
-  return series + String(seq).padStart(6, "0");
+  return `${city}-${series}${String(seq).padStart(6, "0")}`;
 }
 
 export function parseSerial(serial: string): SerialParts {
   if (!isSerial(serial)) throw new RangeError(`not a compact serial: ${serial}`);
-  return { series: serial.slice(0, 1), seq: Number(serial.slice(1)) };
+  return { city: serial.slice(0, 3), series: serial.slice(4, 5), seq: Number(serial.slice(5)) };
 }
 
-/** "A000001" → "A 000 001" */
+/** "SIR-A000001" → "SIR-A 000 001" */
 export function formatSerial(serial: string): string {
-  const { series } = parseSerial(serial);
-  return `${series} ${serial.slice(1, 4)} ${serial.slice(4)}`;
+  parseSerial(serial);
+  return `${serial.slice(0, 5)} ${serial.slice(5, 8)} ${serial.slice(8)}`;
 }
 
 export function noteUrl(serial: string, prefix = DEFAULT_NOTE_URL_PREFIX): string {
@@ -44,7 +48,7 @@ export function noteUrl(serial: string, prefix = DEFAULT_NOTE_URL_PREFIX): strin
 /**
  * Normalises whatever a scanner or a cashier produced into a compact serial, or null.
  * Accepts the exact QR URL (prefix + serial, optional trailing slash) or a typed serial
- * with optional spaces ("a 000 001"). Any other URL is rejected.
+ * with optional spaces and hyphen ("sir a 000 001", "SIRA000001"). Any other URL is rejected.
  */
 export function normalizeSerial(raw: string, prefix = DEFAULT_NOTE_URL_PREFIX): string | null {
   let value = raw.trim();
@@ -52,8 +56,8 @@ export function normalizeSerial(raw: string, prefix = DEFAULT_NOTE_URL_PREFIX): 
     if (value.slice(0, prefix.length).toLowerCase() !== prefix.toLowerCase()) return null;
     value = value.slice(prefix.length).replace(/\/$/, "");
   }
-  const compact = value.replace(/\s+/g, "").toUpperCase();
-  return isSerial(compact) ? compact : null;
+  const match = /^([A-Z]{3})-?([A-Z])([0-9]{6})$/.exec(value.replace(/\s+/g, "").toUpperCase());
+  return match ? `${match[1]}-${match[2]}${match[3]}` : null;
 }
 
 /**

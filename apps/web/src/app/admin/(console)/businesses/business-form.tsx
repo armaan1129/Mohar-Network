@@ -1,15 +1,18 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { FieldError, FormError } from "@/components/form-message";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { initialActionState, type ActionState } from "@/lib/action-state";
+import type { FormOptions } from "./form-options";
 
 type Business = {
   name: string;
+  city_id: string;
   category_id: string;
+  scope: "city" | "national";
   address: string;
   gstin: string | null;
   lat: number | null;
@@ -22,14 +25,18 @@ type Business = {
 
 type Props = {
   action: (prev: ActionState, form: FormData) => Promise<ActionState>;
-  categories: { id: string; name: string; taken: boolean }[];
+  options: FormOptions;
   business?: Business;
   submitLabel: string;
 };
 
-export function BusinessForm({ action, categories, business, submitLabel }: Props) {
+export function BusinessForm({ action, options, business, submitLabel }: Props) {
   const [state, formAction, pending] = useActionState(action, initialActionState);
+  const [cityId, setCityId] = useState(business?.city_id ?? "");
   const err = state.fieldErrors ?? {};
+  // One business per category per city: a category held in the chosen city is unavailable.
+  const taken = (categoryId: string) =>
+    categoryId !== business?.category_id && options.held.includes(`${cityId}:${categoryId}`);
 
   const field = (
     name: keyof Business,
@@ -54,6 +61,31 @@ export function BusinessForm({ action, categories, business, submitLabel }: Prop
     <form action={formAction} className="grid gap-4 sm:grid-cols-2">
       {field("name", "Business name", { required: true })}
       <div className="flex flex-col gap-2">
+        <Label htmlFor="city_id">City</Label>
+        <Select
+          id="city_id"
+          name={business ? undefined : "city_id"}
+          value={cityId}
+          onChange={(e) => setCityId(e.target.value)}
+          disabled={!!business}
+          required
+          aria-invalid={!!err.city_id}
+          aria-describedby="city_id-error"
+        >
+          <option value="" disabled>
+            Choose…
+          </option>
+          {options.cities.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} ({c.code})
+            </option>
+          ))}
+        </Select>
+        {/* A business never changes city; send the fixed value when editing. */}
+        {business && <input type="hidden" name="city_id" value={business.city_id} />}
+        <FieldError id="city_id-error" messages={err.city_id} />
+      </div>
+      <div className="flex flex-col gap-2">
         <Label htmlFor="category_id">Category</Label>
         <Select
           id="category_id"
@@ -66,15 +98,37 @@ export function BusinessForm({ action, categories, business, submitLabel }: Prop
           <option value="" disabled>
             Choose…
           </option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id} disabled={c.taken && c.id !== business?.category_id}>
+          {options.categories.map((c) => (
+            <option key={c.id} value={c.id} disabled={taken(c.id)}>
               {c.name}
-              {c.taken && c.id !== business?.category_id ? " (taken)" : ""}
+              {taken(c.id) ? " (taken)" : ""}
             </option>
           ))}
         </Select>
         <FieldError id="category_id-error" messages={err.category_id} />
       </div>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-medium">Accepts notes from</legend>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name="scope"
+            value="city"
+            defaultChecked={(business?.scope ?? "city") === "city"}
+          />
+          Its own city only
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name="scope"
+            value="national"
+            defaultChecked={business?.scope === "national"}
+          />
+          National: also other national partners&apos; notes
+        </label>
+        <FieldError id="scope-error" messages={err.scope} />
+      </fieldset>
       <div className="sm:col-span-2">{field("address", "Address", { required: true })}</div>
       {field("phone", "Phone", { inputMode: "tel", autoComplete: "off" })}
       {field("hours", "Opening hours", { placeholder: "10 am – 8 pm, closed Tuesday" })}

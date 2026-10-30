@@ -15,6 +15,7 @@ create type public.note_status as enum ('printed', 'allocated', 'issued', 'redee
 -- ---------------------------------------------------------------------------
 create table public.note_batches (
   id uuid primary key default gen_random_uuid(),
+  city_code text not null references public.cities (code) on update restrict on delete restrict,
   series text not null check (series ~ '^[A-Z]$'),
   first_seq integer not null check (first_seq between 1 and 999999),
   last_seq integer not null check (last_seq between 1 and 999999),
@@ -24,8 +25,10 @@ create table public.note_batches (
   created_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),
   check (last_seq >= first_seq),
+  constraint note_batches_identity unique (id, city_code, series),
   -- Two batches can never cover the same serial.
   constraint note_batches_no_overlap exclude using gist (
+    city_code with =,
     series with =,
     int4range(first_seq, last_seq, '[]') with &&
   )
@@ -98,10 +101,11 @@ create index redemptions_created_idx on public.redemptions (created_at);
 -- ---------------------------------------------------------------------------
 create table public.notes (
   id uuid primary key default gen_random_uuid(),
+  city_code text not null references public.cities (code) on update restrict on delete restrict,
   series text not null check (series ~ '^[A-Z]$'),
   seq integer not null check (seq between 1 and 999999),
-  serial text generated always as (series || lpad(seq::text, 6, '0')) stored,
-  batch_id uuid not null references public.note_batches (id) on delete restrict,
+  serial text generated always as (city_code || '-' || series || lpad(seq::text, 6, '0')) stored,
+  batch_id uuid not null,
   status public.note_status not null default 'printed',
   allocated_business_id uuid references public.businesses (id) on delete restrict,
   allocation_id uuid references public.note_allocations (id) on delete restrict,
@@ -115,7 +119,10 @@ create table public.notes (
   voided_at timestamptz,
   void_reason text check (void_reason is null or length(void_reason) <= 300),
   updated_at timestamptz not null default now(),
-  constraint notes_series_seq_key unique (series, seq),
+  -- A note's city and series are its batch's.
+  constraint notes_batch_fk foreign key (batch_id, city_code, series)
+    references public.note_batches (id, city_code, series) on delete restrict,
+  constraint notes_series_seq_key unique (city_code, series, seq),
   constraint notes_serial_key unique (serial),
   constraint notes_issued_where_allocated check (
     issued_business_id is null or issued_business_id = allocated_business_id
@@ -142,7 +149,7 @@ create table public.notes (
   )
 );
 
-comment on column public.notes.serial is 'Compact serial, e.g. A000001. The QR encodes https://sirhindmohar.in/n/<serial>.';
+comment on column public.notes.serial is 'Compact serial, e.g. SIR-A000001. The QR encodes https://themoharnetwork.com/n/<serial>.';
 
 create index notes_batch_idx on public.notes (batch_id);
 create index notes_allocated_business_idx on public.notes (allocated_business_id, status);
@@ -236,7 +243,7 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  if new.id <> old.id or new.series <> old.series or new.seq <> old.seq or new.batch_id <> old.batch_id then
+  if new.id <> old.id or new.city_code <> old.city_code or new.series <> old.series or new.seq <> old.seq or new.batch_id <> old.batch_id then
     raise exception 'MOHAR_IMMUTABLE' using detail = 'note identity cannot change: ' || old.serial;
   end if;
 

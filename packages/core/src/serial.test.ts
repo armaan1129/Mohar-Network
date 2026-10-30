@@ -12,51 +12,58 @@ import {
 
 describe("serial format", () => {
   it("builds and formats compact serials", () => {
-    expect(toSerial("A", 1)).toBe("A000001");
-    expect(toSerial("B", 999_999)).toBe("B999999");
-    expect(formatSerial("A000001")).toBe("A 000 001");
-    expect(parseSerial("A000504")).toEqual({ series: "A", seq: 504 });
-    expect(isSerial("A000001")).toBe(true);
-    expect(isSerial("a000001")).toBe(false);
+    expect(toSerial("SIR", "A", 1)).toBe("SIR-A000001");
+    expect(toSerial("PTA", "B", 999_999)).toBe("PTA-B999999");
+    expect(formatSerial("SIR-A000001")).toBe("SIR-A 000 001");
+    expect(parseSerial("SIR-A000504")).toEqual({ city: "SIR", series: "A", seq: 504 });
+    expect(isSerial("SIR-A000001")).toBe(true);
+    expect(isSerial("sir-a000001")).toBe(false);
+    expect(isSerial("A000001")).toBe(false);
   });
 
   it("rejects bad parts", () => {
-    expect(() => toSerial("AA", 1)).toThrow(RangeError);
-    expect(() => toSerial("a", 1)).toThrow(RangeError);
-    expect(() => toSerial("A", 0)).toThrow(RangeError);
-    expect(() => toSerial("A", 1_000_000)).toThrow(RangeError);
-    expect(() => toSerial("A", 1.5)).toThrow(RangeError);
-    expect(() => parseSerial("A 000 001")).toThrow(RangeError);
+    expect(() => toSerial("SI", "A", 1)).toThrow(RangeError);
+    expect(() => toSerial("sir", "A", 1)).toThrow(RangeError);
+    expect(() => toSerial("SIR", "AA", 1)).toThrow(RangeError);
+    expect(() => toSerial("SIR", "a", 1)).toThrow(RangeError);
+    expect(() => toSerial("SIR", "A", 0)).toThrow(RangeError);
+    expect(() => toSerial("SIR", "A", 1_000_000)).toThrow(RangeError);
+    expect(() => toSerial("SIR", "A", 1.5)).toThrow(RangeError);
+    expect(() => parseSerial("SIR-A 000 001")).toThrow(RangeError);
   });
 });
 
 describe("QR URL (printed, permanent)", () => {
-  it("is exactly https://sirhindmohar.in/n/A000001", () => {
-    expect(noteUrl("A000001")).toBe("https://sirhindmohar.in/n/A000001");
+  it("is exactly https://themoharnetwork.com/n/SIR-A000001", () => {
+    expect(noteUrl("SIR-A000001")).toBe("https://themoharnetwork.com/n/SIR-A000001");
   });
 
   it("refuses to build a URL from a non-serial", () => {
-    expect(() => noteUrl("A1")).toThrow(RangeError);
+    expect(() => noteUrl("A000001")).toThrow(RangeError);
   });
 
   it.each([
-    ["https://sirhindmohar.in/n/A000001", "A000001"],
-    ["https://sirhindmohar.in/n/A000001/", "A000001"],
-    ["HTTPS://SIRHINDMOHAR.IN/n/A000001", "A000001"],
-    ["  https://sirhindmohar.in/n/a000042  ", "A000042"],
-    ["A000001", "A000001"],
-    ["a 000 001", "A000001"],
-    ["A 000001", "A000001"],
+    ["https://themoharnetwork.com/n/SIR-A000001", "SIR-A000001"],
+    ["https://themoharnetwork.com/n/SIR-A000001/", "SIR-A000001"],
+    ["HTTPS://THEMOHARNETWORK.COM/n/SIR-A000001", "SIR-A000001"],
+    ["  https://themoharnetwork.com/n/sir-a000042  ", "SIR-A000042"],
+    ["SIR-A000001", "SIR-A000001"],
+    ["sir a 000 001", "SIR-A000001"],
+    ["SIRA000001", "SIR-A000001"],
+    ["SIR-A 000 001", "SIR-A000001"],
   ])("normalises %j", (raw, serial) => {
     expect(normalizeSerial(raw)).toBe(serial);
   });
 
   it.each([
-    "https://evil.example/n/A000001",
-    "https://sirhindmohar.in/x/A000001",
-    "https://sirhindmohar.in/n/A00001",
-    "http://sirhindmohar.in/n/A000001",
-    "A0000011",
+    "https://evil.example/n/SIR-A000001",
+    "https://sirhind.themoharnetwork.com/n/SIR-A000001",
+    "https://themoharnetwork.com/x/SIR-A000001",
+    "https://themoharnetwork.com/n/SIR-A00001",
+    "http://themoharnetwork.com/n/SIR-A000001",
+    "A000001",
+    "SIR--A000001",
+    "SIR-A0000011",
     "",
     "hello",
   ])("rejects %j", (raw) => {
@@ -64,13 +71,13 @@ describe("QR URL (printed, permanent)", () => {
   });
 
   it("honours a custom prefix", () => {
-    expect(normalizeSerial("http://localhost:3000/n/A000007", "http://localhost:3000/n/")).toBe(
-      "A000007",
+    expect(normalizeSerial("http://localhost:3000/n/SIR-A000007", "http://localhost:3000/n/")).toBe(
+      "SIR-A000007",
     );
   });
 });
 
-describe("cut-and-stack ranges (batch A)", () => {
+describe("cut-and-stack ranges (batch SIR-A)", () => {
   const batchA = { firstSeq: 1, lastSeq: 504, stackSize: 42 };
 
   it("has 12 stacks of 42", () => {

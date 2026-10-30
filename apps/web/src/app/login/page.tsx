@@ -20,7 +20,7 @@ export default async function LoginPage({
         <CardHeader>
           <CardTitle>Partner sign in</CardTitle>
           <CardDescription>
-            For Sirhind Mohar partner businesses and the network admin.
+            For Mohar Network partner businesses and the network admin.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

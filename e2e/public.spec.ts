@@ -2,9 +2,9 @@ import { expect, test } from "@playwright/test";
 
 test("home shows the bilingual name", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Sirhind Mohar" })).toBeVisible();
-  await expect(page.getByText("ਸਰਹਿੰਦ ਮੋਹਰ")).toBeVisible();
-  await expect(page.getByText("سرہند مہر")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The Mohar Network" })).toBeVisible();
+  await expect(page.getByText("ਮੋਹਰ ਨੈੱਟਵਰਕ")).toBeVisible();
+  await expect(page.getByText("مہر نیٹ ورک")).toBeVisible();
 });
 
 test("security headers are set", async ({ request }) => {

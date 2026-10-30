@@ -12,9 +12,9 @@ describe("urlOnRequestHost", () => {
   });
 
   it("honours proxy headers and defaults public hosts to https", () => {
-    expect(urlOnRequestHost(new Headers({ host: "sirhindmohar.in" }), fallback, "/app").href).toBe(
-      "https://sirhindmohar.in/app",
-    );
+    expect(
+      urlOnRequestHost(new Headers({ host: "themoharnetwork.com" }), fallback, "/app").href,
+    ).toBe("https://themoharnetwork.com/app");
     const proxied = new Headers({
       host: "internal:3000",
       "x-forwarded-host": "preview.vercel.app",

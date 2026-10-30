@@ -2,7 +2,10 @@
 -- admin rights need network_admin AND an MFA (aal2) session.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(36);
+
+insert into public.cities (id, code, name, slug, is_live) values
+  ('b1000000-0000-4000-8000-0000000000e1', 'TRL', 'RLS City', 'trl-test', true);
 
 -- Switch the transaction to an API user. Undo with `reset role`.
 create function pg_temp.login(p_uid uuid, p_aal text default 'aal1') returns void language plpgsql as $$
@@ -33,12 +36,13 @@ insert into auth.users (id, email, aud, role) values
   ('b0000000-0000-4000-8000-0000000000b2', 'cashier.b@rls.test', 'authenticated', 'authenticated');
 update public.profiles set role = 'network_admin' where user_id = 'b0000000-0000-4000-8000-000000000001';
 
+insert into public.cities (code, name, slug, is_live) values ('TNL', 'Not Live City', 'tnl-test', false);
 insert into public.categories (id, name) values
   ('b1000000-0000-4000-8000-00000000000a', 'RLS Cat A'),
   ('b1000000-0000-4000-8000-00000000000b', 'RLS Cat B');
-insert into public.businesses (id, name, category_id, address) values
-  ('b2000000-0000-4000-8000-00000000000a', 'Shop A', 'b1000000-0000-4000-8000-00000000000a', 'Address of A'),
-  ('b2000000-0000-4000-8000-00000000000b', 'Shop B', 'b1000000-0000-4000-8000-00000000000b', 'Address of B');
+insert into public.businesses (id, name, city_id, category_id, address) values
+  ('b2000000-0000-4000-8000-00000000000a', 'Shop A', 'b1000000-0000-4000-8000-0000000000e1', 'b1000000-0000-4000-8000-00000000000a', 'Address of A'),
+  ('b2000000-0000-4000-8000-00000000000b', 'Shop B', 'b1000000-0000-4000-8000-0000000000e1', 'b1000000-0000-4000-8000-00000000000b', 'Address of B');
 insert into public.business_users (business_id, user_id, role) values
   ('b2000000-0000-4000-8000-00000000000a', 'b0000000-0000-4000-8000-0000000000a1', 'owner'),
   ('b2000000-0000-4000-8000-00000000000a', 'b0000000-0000-4000-8000-0000000000a2', 'cashier'),
@@ -49,10 +53,10 @@ insert into public.customers (id, mobile_e164, mobile_sha256, name) values
   ('b3000000-0000-4000-8000-00000000000a', '+919800000001', encode(sha256('+919800000001'::bytea), 'hex'), 'Customer of A'),
   ('b3000000-0000-4000-8000-00000000000b', '+919800000002', encode(sha256('+919800000002'::bytea), 'hex'), 'Customer of B');
 
-insert into public.note_batches (id, series, first_seq, last_seq, stack_size, printed_at)
-values ('b4000000-0000-4000-8000-000000000001', 'Z', 1, 4, 2, current_date);
-insert into public.notes (id, series, seq, batch_id)
-select ('b5000000-0000-4000-8000-00000000000' || s)::uuid, 'Z', s, 'b4000000-0000-4000-8000-000000000001'
+insert into public.note_batches (id, city_code, series, first_seq, last_seq, stack_size, printed_at)
+values ('b4000000-0000-4000-8000-000000000001', 'TRL', 'Z', 1, 4, 2, current_date);
+insert into public.notes (id, city_code, series, seq, batch_id)
+select ('b5000000-0000-4000-8000-00000000000' || s)::uuid, 'TRL', 'Z', s, 'b4000000-0000-4000-8000-000000000001'
 from generate_series(1, 4) s;
 
 insert into public.note_allocations (id, batch_id, business_id, first_seq, last_seq, stack_index) values
@@ -103,7 +107,7 @@ select results_eq($$ select name from public.businesses $$, array['Shop A'], 'ow
 select results_eq($$ select bill_ref from public.issuances order by bill_ref $$, array['A-0', 'A-1'], 'owner A sees all of A''s issuances and none of B''s');
 select is((select count(*)::int from public.redemptions), 0, 'owner A cannot see B''s redemptions');
 select is((select count(*)::int from public.redemption_items), 0, 'owner A cannot see B''s redemption items');
-select results_eq($$ select serial from public.notes order by serial $$, array['Z000001', 'Z000002'], 'owner A sees only A''s notes');
+select results_eq($$ select serial from public.notes order by serial $$, array['TRL-Z000001', 'TRL-Z000002'], 'owner A sees only A''s notes');
 select results_eq($$ select name from public.customers $$, array['Customer of A'], 'owner A sees only customers who transacted at A');
 select is((select count(*)::int from public.note_events where business_id <> 'b2000000-0000-4000-8000-00000000000a'), 0, 'owner A sees no events of other businesses');
 select ok((select count(*) from public.note_events) > 0, 'owner A sees A''s note events');
@@ -115,7 +119,7 @@ select is((select count(*)::int from public.audit_log), 0, 'owner A cannot read 
 select is((select count(*)::int from public.note_batches), 0, 'owner A cannot read batches');
 
 select throws_ok(
-  $$ insert into public.businesses (name, category_id, address) values ('Sneaky', 'b1000000-0000-4000-8000-00000000000b', 'x address') $$,
+  $$ insert into public.businesses (name, city_id, category_id, address) values ('Sneaky', 'b1000000-0000-4000-8000-0000000000e1', 'b1000000-0000-4000-8000-00000000000b', 'x address') $$,
   '42501', null, 'owner A cannot create a business');
 select is(
   pg_temp.affected($q$ update public.businesses set name = 'Renamed' $q$),
@@ -156,6 +160,8 @@ set local role anon;
 select throws_ok($$ select * from public.businesses $$, '42501', null, 'anon cannot read businesses directly');
 select ok((select count(*) from public.directory() where name in ('Shop A', 'Shop B')) = 2, 'anon sees active businesses through directory()');
 select throws_ok($$ select * from public.notes $$, '42501', null, 'anon cannot read notes');
+select is((select count(*)::int from public.directory('trl')), 2, 'directory filters by city code');
+select is((select count(*)::int from public.cities where code = 'TNL'), 0, 'anon cannot see a city that is not live');
 reset role;
 
 -- ---------------------------------------------------------------- admin

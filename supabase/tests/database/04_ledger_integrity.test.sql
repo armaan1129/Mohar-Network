@@ -1,24 +1,35 @@
 -- Note lifecycle guard rails (§3), append-only ledgers, and the one-redemption-per-note rule.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(15);
+
+insert into public.cities (id, code, name, slug, is_live) values
+  ('c1000000-0000-4000-8000-0000000000e1', 'TLG', 'Ledger City', 'tlg-test', true);
 
 insert into auth.users (id, email, aud, role) values ('c0000000-0000-4000-8000-000000000001', 'cashier@ledger.test', 'authenticated', 'authenticated');
 insert into public.categories (id, name) values ('c1000000-0000-4000-8000-000000000001', 'Ledger Cat');
-insert into public.businesses (id, name, category_id, address)
-values ('c2000000-0000-4000-8000-000000000001', 'Ledger Shop', 'c1000000-0000-4000-8000-000000000001', 'Ledger address');
+insert into public.businesses (id, name, city_id, category_id, address)
+values ('c2000000-0000-4000-8000-000000000001', 'Ledger Shop', 'c1000000-0000-4000-8000-0000000000e1', 'c1000000-0000-4000-8000-000000000001', 'Ledger address');
 insert into public.customers (id, mobile_e164, mobile_sha256, name)
 values ('c3000000-0000-4000-8000-000000000001', '+919811111111', encode(sha256('+919811111111'::bytea), 'hex'), 'Ledger Customer');
-insert into public.note_batches (id, series, first_seq, last_seq, stack_size, printed_at)
-values ('c4000000-0000-4000-8000-000000000001', 'Y', 1, 3, 3, current_date);
-insert into public.notes (id, series, seq, batch_id)
-select ('c5000000-0000-4000-8000-00000000000' || s)::uuid, 'Y', s, 'c4000000-0000-4000-8000-000000000001' from generate_series(1, 3) s;
+insert into public.note_batches (id, city_code, series, first_seq, last_seq, stack_size, printed_at)
+values ('c4000000-0000-4000-8000-000000000001', 'TLG', 'Y', 1, 3, 3, current_date);
+insert into public.notes (id, city_code, series, seq, batch_id)
+select ('c5000000-0000-4000-8000-00000000000' || s)::uuid, 'TLG', 'Y', s, 'c4000000-0000-4000-8000-000000000001' from generate_series(1, 3) s;
 
 select throws_ok(
-  $$ insert into public.note_batches (series, first_seq, last_seq, stack_size, printed_at) values ('Y', 3, 10, 2, current_date) $$,
+  $$ insert into public.note_batches (city_code, series, first_seq, last_seq, stack_size, printed_at) values ('TLG', 'Y', 3, 10, 2, current_date) $$,
   '23P01', null, 'overlapping batches in the same series are rejected');
 
-select is((select serial from public.notes where seq = 1), 'Y000001', 'serial is generated from series + seq');
+insert into public.cities (code, name, slug) values ('TLX', 'Other Ledger City', 'tlx-test');
+select lives_ok(
+  $$ insert into public.note_batches (city_code, series, first_seq, last_seq, stack_size, printed_at) values ('TLX', 'Y', 1, 3, 3, current_date) $$,
+  'another city can use the same series and range');
+select throws_ok(
+  $$ insert into public.notes (city_code, series, seq, batch_id) values ('TLX', 'Y', 9, 'c4000000-0000-4000-8000-000000000001') $$,
+  '23503', null, 'a note''s city must match its batch');
+
+select is((select serial from public.notes where city_code = 'TLG' and seq = 1), 'TLG-Y000001', 'serial is generated from city + series + seq');
 select is((select count(*)::int from public.note_events where type = 'printed' and note_id in (select id from public.notes where series = 'Y')), 3, 'creating notes logs a printed event each');
 
 select throws_ok(

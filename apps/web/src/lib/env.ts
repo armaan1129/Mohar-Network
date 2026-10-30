@@ -7,9 +7,9 @@ const publicSchema = z.object({
 
 const serverSchema = publicSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-  APP_BASE_URL: z.url().default("https://sirhindmohar.in"),
+  APP_BASE_URL: z.url().default("https://themoharnetwork.com"),
   // Printed on every note. Permanent.
-  NOTE_URL_PREFIX: z.url().default("https://sirhindmohar.in/n/"),
+  NOTE_URL_PREFIX: z.url().default("https://themoharnetwork.com/n/"),
 });
 
 /** Public env, safe in the browser. Next inlines NEXT_PUBLIC_* at build time. */

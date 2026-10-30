@@ -1,4 +1,9 @@
--- Milestone 1 — foundations: settings, categories, businesses, users, customers, audit log.
+-- Milestone 1 — foundations: settings, cities, categories, businesses, users, customers, audit log.
+--
+-- The Mohar Network is national (themoharnetwork.com). Each city is its own partner network:
+-- one business per category per city. A business is onboarded with a scope:
+--   city      accepts only notes issued in its own city;
+--   national  also accepts notes issued by other national-scope businesses in any city.
 --
 -- Conventions
 --   * Money is bigint paise. Rates are basis points (bps) or numeric.
@@ -18,6 +23,7 @@ grant usage on schema private to anon, authenticated, service_role;
 create type public.profile_role as enum ('member', 'network_admin');
 create type public.business_status as enum ('active', 'suspended', 'left');
 create type public.business_role as enum ('owner', 'cashier');
+create type public.business_scope as enum ('city', 'national');
 
 -- ---------------------------------------------------------------------------
 -- network_settings: the single row holding every business-rule number (§2)
@@ -51,7 +57,27 @@ comment on table public.network_settings is 'Single row (id = 1) of business-rul
 insert into public.network_settings (id) values (1);
 
 -- ---------------------------------------------------------------------------
--- categories
+-- cities: each city is a partner network with its own subdomain and note serials
+-- ---------------------------------------------------------------------------
+create table public.cities (
+  id uuid primary key default gen_random_uuid(),
+  -- Printed in every serial and QR (themoharnetwork.com/n/SIR-A000001), so effectively permanent:
+  -- notes reference it, which blocks changing it once any note exists.
+  code text not null unique check (code ~ '^[A-Z]{3}$'),
+  name text not null check (length(btrim(name)) between 2 and 60),
+  name_pa text check (name_pa is null or length(btrim(name_pa)) between 1 and 60),
+  -- <slug>.themoharnetwork.com
+  slug text not null unique check (slug ~ '^[a-z][a-z0-9-]{1,30}$'),
+  state text not null default 'Punjab' check (length(btrim(state)) between 2 and 60),
+  is_live boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+comment on column public.cities.code is 'Three letters printed in every serial, e.g. SIR in SIR-A000001. Never reuse a code.';
+comment on column public.cities.is_live is 'Shown on the public site and its subdomain once true.';
+
+-- ---------------------------------------------------------------------------
+-- categories (shared by all cities)
 -- ---------------------------------------------------------------------------
 create table public.categories (
   id uuid primary key default gen_random_uuid(),
@@ -68,7 +94,9 @@ create unique index categories_name_key on public.categories (lower(btrim(name))
 create table public.businesses (
   id uuid primary key default gen_random_uuid(),
   name text not null check (length(btrim(name)) between 2 and 120),
+  city_id uuid not null references public.cities (id) on delete restrict,
   category_id uuid not null references public.categories (id) on delete restrict,
+  scope public.business_scope not null default 'city',
   gstin text check (gstin is null or gstin ~ '^[0-9]{2}[A-Z0-9]{10}[0-9A-Z]Z[0-9A-Z]$'),
   address text not null check (length(btrim(address)) between 5 and 300),
   lat numeric(9, 6) check (lat is null or lat between -90 and 90),
@@ -87,11 +115,14 @@ create table public.businesses (
 );
 
 comment on column public.businesses.issuance_cap_per_quarter is 'Max notes issued per IST calendar quarter; null = no cap.';
+comment on column public.businesses.scope is 'city: accepts own-city notes only. national: also accepts notes from other national businesses anywhere.';
 
--- One business per category. A suspended business keeps its category; only `left` frees it.
+-- One business per category per city. A suspended business keeps its category; only `left` frees it.
 create unique index businesses_one_per_category
-  on public.businesses (category_id)
+  on public.businesses (city_id, category_id)
   where status in ('active', 'suspended');
+
+create index businesses_city_idx on public.businesses (city_id);
 
 -- ---------------------------------------------------------------------------
 -- profiles (1:1 with auth.users) and business_users
@@ -261,6 +292,8 @@ $$;
 
 create trigger audit_network_settings after insert or update or delete on public.network_settings
   for each row execute function private.audit_row();
+create trigger audit_cities after insert or update or delete on public.cities
+  for each row execute function private.audit_row();
 create trigger audit_categories after insert or update or delete on public.categories
   for each row execute function private.audit_row();
 create trigger audit_businesses after insert or update or delete on public.businesses
@@ -323,13 +356,17 @@ $$;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function private.handle_new_user();
 
+-- A business never moves city (its notes and settlement history belong to that city).
 -- `left` stamps left_at; leaving is one-way.
-create function private.guard_business_status()
+create function private.guard_business_update()
 returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
+  if new.city_id <> old.city_id then
+    raise exception 'MOHAR_CITY_FIXED' using detail = 'a business cannot move to another city; create a new one';
+  end if;
   if old.status = 'left' and new.status <> 'left' then
     raise exception 'MOHAR_BUSINESS_LEFT' using detail = 'a business that left cannot be reactivated; create a new one';
   end if;
@@ -340,16 +377,19 @@ begin
 end;
 $$;
 
-create trigger businesses_guard_status before update of status on public.businesses
-  for each row execute function private.guard_business_status();
+create trigger businesses_guard_update before update of status, city_id on public.businesses
+  for each row execute function private.guard_business_update();
 
 -- ---------------------------------------------------------------------------
--- Public directory (anon-safe columns of active businesses)
+-- Public directory (anon-safe columns of active businesses in live cities)
 -- ---------------------------------------------------------------------------
-create function public.directory()
+create function public.directory(p_city_code text default null)
 returns table (
   id uuid,
   name text,
+  scope public.business_scope,
+  city_code text,
+  city_name text,
   category_id uuid,
   category_name text,
   category_name_pa text,
@@ -365,12 +405,16 @@ stable
 security definer
 set search_path = ''
 as $$
-  select b.id, b.name, c.id, c.name, c.name_pa, b.address, b.lat, b.lng, b.phone, b.hours, b.logo_url
+  select b.id, b.name, b.scope, ci.code, ci.name, c.id, c.name, c.name_pa,
+         b.address, b.lat, b.lng, b.phone, b.hours, b.logo_url
   from public.businesses b
+  join public.cities ci on ci.id = b.city_id
   join public.categories c on c.id = b.category_id
   where b.status = 'active'
-  order by c.name, b.name;
+    and ci.is_live
+    and (p_city_code is null or ci.code = upper(p_city_code))
+  order by ci.name, c.name, b.name;
 $$;
 
-revoke all on function public.directory() from public;
-grant execute on function public.directory() to anon, authenticated, service_role;
+revoke all on function public.directory(text) from public;
+grant execute on function public.directory(text) to anon, authenticated, service_role;

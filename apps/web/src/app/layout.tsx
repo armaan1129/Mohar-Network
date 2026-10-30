@@ -2,10 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Sirhind Mohar", template: "%s · Sirhind Mohar" },
+  title: { default: "The Mohar Network", template: "%s · Mohar Network" },
   description:
-    "Earn ₹100 Sirhind Mohar notes at partner businesses in Sirhind and spend them at any partner.",
-  metadataBase: new URL(process.env.APP_BASE_URL ?? "https://sirhindmohar.in"),
+    "Earn ₹100 Mohar notes at partner businesses in your city and spend them at any partner.",
+  metadataBase: new URL(process.env.APP_BASE_URL ?? "https://themoharnetwork.com"),
 };
 
 export const viewport: Viewport = {

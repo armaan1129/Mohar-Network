@@ -36,6 +36,6 @@ export async function sendMagicLink(_prev: ActionState, form: FormData): Promise
   // Same answer whether or not the email has an account, so the form can't be used to probe staff lists.
   return {
     ok: true,
-    message: "If this email belongs to a Sirhind Mohar partner, a sign-in link is on its way.",
+    message: "If this email belongs to a Mohar Network partner, a sign-in link is on its way.",
   };
 }

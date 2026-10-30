@@ -41,6 +41,28 @@ create policy network_settings_admin_update on public.network_settings
   for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
 
 -- ---------------------------------------------------------------------------
+-- cities: live cities are public; a member also sees their own city; admin all
+-- ---------------------------------------------------------------------------
+grant select on public.cities to anon, authenticated;
+grant insert, update, delete on public.cities to authenticated;
+
+create policy cities_read_live on public.cities
+  for select to anon using (is_live);
+create policy cities_read on public.cities
+  for select to authenticated
+  using (
+    is_live
+    or (select private.is_admin())
+    or id in (select b.city_id from public.businesses b where b.id in (select private.my_business_ids()))
+  );
+create policy cities_admin_insert on public.cities
+  for insert to authenticated with check ((select private.is_admin()));
+create policy cities_admin_update on public.cities
+  for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));
+create policy cities_admin_delete on public.cities
+  for delete to authenticated using ((select private.is_admin()));
+
+-- ---------------------------------------------------------------------------
 -- categories: public read, admin write
 -- ---------------------------------------------------------------------------
 grant select on public.categories to anon, authenticated;

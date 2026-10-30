@@ -7,7 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { updateBusiness } from "../../actions";
 import { BusinessForm } from "../business-form";
-import { categoryOptions } from "../categories";
+import { businessFormOptions } from "../form-options";
 import { StatusPanel } from "./status-panel";
 import { StaffPanel } from "./staff-panel";
 import { statusTone } from "../status-tone";
@@ -19,9 +19,9 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
   const { supabase } = await requireAdmin();
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
-  const [{ data: business }, categories, { data: staff }] = await Promise.all([
+  const [{ data: business }, options, { data: staff }] = await Promise.all([
     supabase.from("businesses").select("*").eq("id", id).maybeSingle(),
-    categoryOptions(supabase),
+    businessFormOptions(supabase),
     supabase
       .from("business_users")
       .select("user_id, role, created_at")
@@ -63,7 +63,7 @@ export default async function BusinessPage({ params }: { params: Promise<{ id: s
         <CardContent>
           <BusinessForm
             action={updateBusiness.bind(null, business.id)}
-            categories={categories}
+            options={options}
             business={business}
             submitLabel="Save changes"
           />

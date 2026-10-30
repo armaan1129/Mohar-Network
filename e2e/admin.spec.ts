@@ -17,9 +17,12 @@ test("admin signs in with magic link + TOTP and manages businesses", async ({ pa
   await page.getByRole("button", { name: "Verify" }).click();
   await expect(page.getByRole("heading", { name: "Network overview" })).toBeVisible();
 
-  // One business per category: Café is held by Demo Café, so it is offered as taken.
+  // One business per category per city: Café is held by Demo Café in Sirhind, but open in Patiala.
   await page.goto("/admin/businesses/new");
+  await page.getByLabel("City").selectOption({ label: "Sirhind (SIR)" });
   await expect(page.getByRole("option", { name: "Café (taken)" })).toBeDisabled();
+  await page.getByLabel("City").selectOption({ label: "Patiala (PTA)" });
+  await expect(page.getByRole("option", { name: "Café", exact: true })).toBeEnabled();
 
   // A new category, then a business in it.
   const category = `E2E Category ${Date.now()}`;
@@ -30,12 +33,16 @@ test("admin signs in with magic link + TOTP and manages businesses", async ({ pa
 
   await page.goto("/admin/businesses/new");
   await page.getByLabel("Business name").fill("E2E Shop");
+  await page.getByLabel("City").selectOption({ label: "Sirhind (SIR)" });
   await page.getByLabel("Category").selectOption({ label: category });
+  await page.getByLabel("National: also other national partners' notes").check();
   await page.getByLabel("Address").fill("E2E Street, Sirhind");
   await page.getByLabel("Phone").fill("98765 43210");
   await page.getByRole("button", { name: "Create business" }).click();
   await expect(page.getByRole("heading", { name: "E2E Shop" })).toBeVisible();
   await expect(page.getByLabel("Phone")).toHaveValue("+919876543210");
+  await expect(page.getByLabel("City")).toBeDisabled();
+  await expect(page.getByLabel("National: also other national partners' notes")).toBeChecked();
 
   // Suspend keeps the category; the directory hides suspended businesses.
   await page.getByRole("button", { name: "Suspend" }).click();

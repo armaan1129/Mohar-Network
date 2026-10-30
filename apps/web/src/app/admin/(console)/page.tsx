@@ -7,9 +7,9 @@ export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
 export default async function AdminHome() {
   const { supabase } = await requireAdmin();
-  const [businesses, categories, audit] = await Promise.all([
+  const [businesses, cities, audit] = await Promise.all([
     supabase.from("businesses").select("status"),
-    supabase.from("categories").select("id", { count: "exact", head: true }),
+    supabase.from("cities").select("is_live"),
     supabase
       .from("audit_log")
       .select("id, at, action, table_name")
@@ -25,7 +25,11 @@ export default async function AdminHome() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Active businesses" value={byStatus("active")} href="/admin/businesses" />
         <Stat label="Suspended" value={byStatus("suspended")} href="/admin/businesses" />
-        <Stat label="Categories" value={categories.count ?? 0} href="/admin/categories" />
+        <Stat
+          label="Live cities"
+          value={cities.data?.filter((c) => c.is_live).length ?? 0}
+          href="/admin/cities"
+        />
       </div>
       <Card>
         <CardHeader>

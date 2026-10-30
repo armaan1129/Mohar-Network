@@ -13,7 +13,7 @@ export default async function CounterHome() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 py-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Sirhind Mohar</h1>
+        <h1 className="text-xl font-semibold">Mohar Network</h1>
         <form action="/auth/signout" method="post">
           <button className="text-sm text-muted-foreground underline underline-offset-4">
             Sign out

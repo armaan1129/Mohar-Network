@@ -31,7 +31,7 @@ export function MfaForm() {
       }
       const enrolled = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: "Sirhind Mohar admin",
+        friendlyName: "Mohar Network admin",
       });
       if (enrolled.error)
         return setError("Could not start authenticator setup. Refresh and try again.");
@@ -70,7 +70,7 @@ export function MfaForm() {
           {/* eslint-disable-next-line @next/next/no-img-element -- data: URL SVG from Supabase */}
           <img
             src={setup.qr}
-            alt="QR code to add Sirhind Mohar to your authenticator app"
+            alt="QR code to add the Mohar Network to your authenticator app"
             className="size-48"
           />
           <p className="text-center text-xs text-muted-foreground">

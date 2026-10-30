@@ -1,16 +1,20 @@
--- §2: only one business per category among active (and suspended) businesses.
+-- §2: only one business per category per city among active (and suspended) businesses.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(10);
+
+insert into public.cities (id, code, name, slug, is_live) values
+  ('a0000000-0000-4000-8000-0000000000e1', 'TQA', 'Test City A', 'tqa-test', true),
+  ('a0000000-0000-4000-8000-0000000000e2', 'TQB', 'Test City B', 'tqb-test', true);
 
 insert into public.categories (id, name) values ('a0000000-0000-4000-8000-0000000000c1', 'Test Category One');
 
-insert into public.businesses (id, name, category_id, address)
-values ('a0000000-0000-4000-8000-0000000000b1', 'First Shop', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 1');
+insert into public.businesses (id, name, city_id, category_id, address)
+values ('a0000000-0000-4000-8000-0000000000b1', 'First Shop', 'a0000000-0000-4000-8000-0000000000e1', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 1');
 
 select throws_ok(
-  $$ insert into public.businesses (name, category_id, address)
-     values ('Second Shop', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 2') $$,
+  $$ insert into public.businesses (name, city_id, category_id, address)
+     values ('Second Shop', 'a0000000-0000-4000-8000-0000000000e1', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 2') $$,
   '23505', null,
   'a second active business in the same category is rejected'
 );
@@ -18,8 +22,8 @@ select throws_ok(
 update public.businesses set status = 'suspended' where id = 'a0000000-0000-4000-8000-0000000000b1';
 
 select throws_ok(
-  $$ insert into public.businesses (name, category_id, address)
-     values ('Second Shop', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 2') $$,
+  $$ insert into public.businesses (name, city_id, category_id, address)
+     values ('Second Shop', 'a0000000-0000-4000-8000-0000000000e1', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 2') $$,
   '23505', null,
   'a suspended business still holds its category'
 );
@@ -33,8 +37,8 @@ select isnt(
 );
 
 select lives_ok(
-  $$ insert into public.businesses (id, name, category_id, address)
-     values ('a0000000-0000-4000-8000-0000000000b2', 'Second Shop', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 2') $$,
+  $$ insert into public.businesses (id, name, city_id, category_id, address)
+     values ('a0000000-0000-4000-8000-0000000000b2', 'Second Shop', 'a0000000-0000-4000-8000-0000000000e1', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 2') $$,
   'a business that left frees the category'
 );
 
@@ -42,6 +46,24 @@ select throws_ok(
   $$ update public.businesses set status = 'active' where id = 'a0000000-0000-4000-8000-0000000000b1' $$,
   'P0001', 'MOHAR_BUSINESS_LEFT',
   'a business that left cannot be reactivated'
+);
+
+select lives_ok(
+  $$ insert into public.businesses (name, city_id, category_id, address)
+     values ('Shop in City B', 'a0000000-0000-4000-8000-0000000000e2', 'a0000000-0000-4000-8000-0000000000c1', 'Some address 3') $$,
+  'the same category is open in another city'
+);
+
+select throws_ok(
+  $$ update public.businesses set city_id = 'a0000000-0000-4000-8000-0000000000e2' where id = 'a0000000-0000-4000-8000-0000000000b2' $$,
+  'P0001', 'MOHAR_CITY_FIXED',
+  'a business cannot move to another city'
+);
+
+select throws_ok(
+  $$ insert into public.cities (code, name, slug) values ('si', 'Bad Code', 'bad-code') $$,
+  '23514', null,
+  'city codes are exactly three capital letters'
 );
 
 select throws_ok(
